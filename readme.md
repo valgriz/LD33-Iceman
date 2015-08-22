@@ -1,6 +1,5 @@
-Made in 48 hours for Ludum Dare 32.
-You are an ant who blows stuff up.
+Made in 48 hours for Ludum Dare 33.
+You are a dude who freezes people.
 
 Steven Marturano
-Joshua Downes
 4/14/15
