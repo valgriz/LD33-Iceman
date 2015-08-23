@@ -3,12 +3,16 @@ var game = new Phaser.Game(820, 560, Phaser.AUTO, '',{preload: preload, create: 
 //groups
 var gIceBlockBorder;
 var gIceBlockEnvironment;
-var gFire
+var gFire;
+var gFireGuys;
+var gIceBolt;
 
 //visible objects
 var monster;
 var fire;
 var liquid;
+var fireGuy;
+var iceBolt;
 
 //animations
 var flame;
@@ -27,6 +31,9 @@ var spaceBar;
 var logicTimer;
 var temperature;
 var gameEnded;
+var eTimer;
+var animSeqNF;
+var iTimer;
 
 this.game.stage.scape.pageAlignHorizontally = true;
 this.game.stage.scale.pageAlighVertically = true;
@@ -39,10 +46,11 @@ function preload(){
 	game.load.image('monster','assets/images/monster_a1.png');
 	game.load.image('therm_base','assets/images/therm_base.png');
 	game.load.image('therm_liquid','assets/images/therm_liquid.png');
+	game.load.image('iceBolt', 'assets/images/icebolt.png');
 
 	game.load.spritesheet('fire', 'assets/images/fire_a1.png', 64, 64, 4);
-	game.load.spritesheet('monsterSpriteSheet', 'assets/images/monstersheet_a1.png', 41, 64, 16);
-
+	game.load.spritesheet('monsterSpriteSheet', 'assets/images/monstersheet_a1.png', 41, 64, 26);
+	game.load.spritesheet('fireGuySpriteSheet', 'assets/images/fireguy_a3.png', 21, 38, 4);
 
 	//Defines input keys
 	leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
@@ -62,20 +70,28 @@ function create(){
 	monster = game.add.sprite(832, 560 - ((1 + 1) * 64),'monsterSpriteSheet');
 	monster.animations.add('idle', [0,1,2,3], 10, true);
 	monster.animations.add('rMotion', [4,5,6,7,8,9], 10, true);
-	monster.animations.add('lMotion', [10,11,12,13,14,15], 10, true);	
+	monster.animations.add('lMotion', [10,11,12,13,14,15], 10, true);
+	monster.animations.add('melting', [16,17,18,19,20,21,22,23,24,25], 10, true);	
+	monster.animations.add('melted', [25], 10, true);	
 	monster.animations.play('idle');
+
+	// fireGuy = game.add.sprite(200, 200, 'fireGuySpriteSheet');
+	// fireGuy.animations.add('idle', [0,1,2], 10, true);
+	// fireGuy.animations.play('idle');
 
 	gIceBlockBorder = new Phaser.Group(game)
 	gIceBlockEnvironment = new Phaser.Group(game);
 	gFire = new Phaser.Group(game);
+	gFireGuys = new Phaser.Group(game);
+	gIceBolt = new Phaser.Group(game);
 
 	logicTimer = 250;
 	temperature = 0;
+	iTime = 0;
 
 	for(var i = 0; i < 14; i++){
 		gIceBlockBorder.add(game.add.sprite((i * 64), 560 - (1 * 64), 'wall'));
 	}
-
 
 	game.physics.enable([monster, gIceBlockBorder], Phaser.Physics.ARCADE);
 	monster.body.gravity.y = 1400;
@@ -91,9 +107,8 @@ function create(){
 	liquid.scale.x = (temperature/100);
 
 	gameEnded = false;
-
+	eTimer = 0;
 }
-
 
 function spawnFlame(){
 	var tempFire = game.add.sprite(832, 560 - ((1 + 1) * 64),'fire');
@@ -119,23 +134,46 @@ function spawnEnvironmentBlock(height){
 			var rnd = Math.random();
 				if(rnd < (1/(height + 1))){
 				spawnEnvironmentBlock(height + 1);
-			}
+				} else {
+					var rnd2 = Math.random();
+					if(rnd2 < .35){
+						fireGuy = game.add.sprite(853, 560 - ((height + 1) * 64) - 38, 'fireGuySpriteSheet');
+						fireGuy.animations.add('idle', [0,1,2], 10, true);
+						fireGuy.animations.add('frozen', [3], 10, true);
+						fireGuy.animations.play('idle');
+						game.physics.enable([fireGuy], Phaser.Physics.ARCADE);
+						fireGuy.body.velocity.x = -100 * (logicTimer / 250);
+						gFireGuys.add(fireGuy);
+					}
+				}
 }
 
-function removeElements(arrayOfElementsToRemove){
+function removeElementsIce(arrayOfElementsToRemove){
 	for(var i = 0; i < arrayOfElementsToRemove.length; i++){
 		gIceBlockEnvironment.remove(arrayOfElementsToRemove[i]);
 	}
 }
 
-function gameOver(){
-	alert('GAME OVER!!!\nThanks for playing!');
-	gameEnded = true;
+function removeElementsIceBolt(arrayOfElementsToRemove){
+	for(var i = 0; i < arrayOfElementsToRemove.length; i++){
+		gIceBolt.remove(arrayOfElementsToRemove[i]);
+	}
 }
 
-function monsterFireCollide(){
+function gameOver(){
+	monster.animations.play('melting');
+	gameEnded = true;
+	animSeqNF = true;
+	eTimer = 0;
+}
+
+function monsterFireCollide(heat){
 	if(temperature<100){
-		temperature++;
+		if(heat==2){
+			temperature++;
+		} else {
+			temperature += .5;	
+		}
 	} else {
 		if(!gameEnded){
 			gameOver();
@@ -143,8 +181,20 @@ function monsterFireCollide(){
 	}
 }
 
-
 function update(){
+	if(gameEnded && animSeqNF){
+		if(eTimer<50){
+			eTimer++;
+		} else {
+			monster.animations.play('melted');
+			animSeqNF = false;
+			monster.body.immovable = true;
+			monster.body.velocity.y = 100;
+			alert("YOU MELTED\nGAME OVER!!!");
+			location.reload();
+
+		}
+	}
 
 	var remEle = [];
 
@@ -162,7 +212,21 @@ function update(){
 		//game.physics.arcade.collide(monster, sp, monsterFireCollide, null, this);
 		if((monster.body.x + 41 > sp.body.x) && (monster.body.x < sp.body.x + 64 )){
 			if((monster.body.y + 41 > sp.body.y) && (monster.body.y < sp.body.y + 64)){
-			monsterFireCollide();
+			monsterFireCollide(2);
+			} else if((monster.body.y > sp.body.y - 64) && (monster.body.y < sp.body.y + 64)){
+			monsterFireCollide(1);
+			}
+		}
+	}, this);
+
+	gFireGuys.forEach(function(sp){
+		sp.body.velocity.x = -100 * (logicTimer / 250);
+		if((monster.body.x + 64 > sp.body.x) && (monster.body.x < sp.body.x + 21 )){
+			if((monster.body.y + 64 > sp.body.y) && (monster.body.y < sp.body.y)){
+				if(sp.){
+
+				}
+			monsterFireCollide(2);
 			}
 		}
 	}, this);
@@ -184,34 +248,100 @@ function update(){
 
 	liquid.scale.x = (temperature/100);
 
-
-	removeElements(remEle);
+	removeElementsIce(remEle);
 
 	game.physics.arcade.collide(monster, gIceBlockBorder);
 	game.physics.arcade.collide(monster, gIceBlockEnvironment);
 
+	if((monster.body.x - 41 < 0)||(monster.body.x > 820 + 41)){
+		monsterFireCollide();
+	}
+	if((monster.body.y + 64 > 560)){
+		monsterFireCollide();
+	}
 
+	if(!gameEnded){
+		if(leftKey.isDown || aKey.isDown){
+			monster.body.velocity.x = -270;
+			monster.animations.play('lMotion');
+	 	} else if(rightKey.isDown || dKey.isDown){
+	 		monster.body.velocity.x = 270;
+	 		monster.animations.play('rMotion');
+	 	} else {
+	 		if(!gameEnded){
+	 			monster.animations.play('idle');
+	 		}
+	 		if(monster.body.velocity.x > 0){
+	 			monster.body.acceleration.x = -500;
+	 		} else {
+	 			monster.body.acceleration.x = 500;
+	 		}
+	 	}
+	 	if((upKey.isDown || wKey.isDown) && monster.body.velocity.y ==0){
+	 		monster.body.velocity.y = -500;
+	 	}
+ 	}
 
-
-	if(leftKey.isDown || aKey.isDown){
-		monster.body.velocity.x = -270;
-		monster.animations.play('lMotion');
-
- 	} else if(rightKey.isDown || dKey.isDown){
- 		monster.body.velocity.x = 270;
- 		monster.animations.play('rMotion');
-
- 	} else {
- 		monster.animations.play('idle');
- 		if(monster.body.velocity.x > 0){
- 			monster.body.acceleration.x = -500;
+ 	if(iTimer!=0){
+ 		if(iTimer < 30){
+ 			iTimer++;
  		} else {
- 			monster.body.acceleration.x = 500;
+ 			iTimer = 0;
  		}
  	}
 
- 	if((upKey.isDown || wKey.isDown) && monster.body.velocity.y ==0){
- 		monster.body.velocity.y = -500;
+ 	var remEleIceBolt = [];
+	gIceBolt.forEach(function(sp){
+		if((sp.body.x < -100) || (sp.body.x > 920) || (sp.body.y < -100) || (sp.body.y > 660)){
+			remEleIceBolt.push(sp);
+		} 
+		gFireGuys.forEach(function(ds){
+			if((sp.body.x > ds.body.x) && (sp.body.x < ds.body.x + 21)){
+				if((sp.body.y > ds.body.y - 20) && (sp.body.y < ds.body.y + 38)){
+					sp.body.x = 1000;
+					ds.animations.play('frozen');
+				}
+			}
+		}, this);
+
+
+	}, this);
+	removeElementsIceBolt(remEleIceBolt);
+
+
+ 	if(spaceBar.isDown){
+ 		if(iTimer == 0){
+	 		var tempIce1 = game.add.sprite(monster.body.x, monster.body.y + 20, 'iceBolt');
+			var tempIce2 = game.add.sprite(monster.body.x, monster.body.y + 20, 'iceBolt');
+			var tempIce3 = game.add.sprite(monster.body.x + 10, monster.body.y, 'iceBolt');
+			var tempIce4 = game.add.sprite(monster.body.x + 20, monster.body.y + 20, 'iceBolt');
+			var tempIce5 = game.add.sprite(monster.body.x + 20, monster.body.y + 20, 'iceBolt');
+
+			game.physics.enable([tempIce1, tempIce2, tempIce3, tempIce4, tempIce5], Phaser.Physics.ARCADE);
+
+			tempIce1.body.velocity.x = -300;
+
+			tempIce2.body.velocity.x = -200;
+			tempIce2.body.velocity.y = -200;
+			tempIce2.angle = 45;
+
+			tempIce3.body.velocity.y = -300;
+			tempIce3.angle = 90;
+
+			tempIce4.body.velocity.x = 200;
+			tempIce4.body.velocity.y = -200;
+			tempIce4.angle = -45;
+
+
+			tempIce5.body.velocity.x = 300;
+
+			gIceBolt.add(tempIce1);
+			gIceBolt.add(tempIce2);
+			gIceBolt.add(tempIce3);
+			gIceBolt.add(tempIce4);
+			gIceBolt.add(tempIce5);
+			iTimer++;
+		}
  	}
 
 }
