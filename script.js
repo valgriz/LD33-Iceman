@@ -1,13 +1,17 @@
 var game = new Phaser.Game(820, 560, Phaser.AUTO, '',{preload: preload, create: create, update: update});
 
-//visible objects
+//groups
 var gIceBlockBorder;
 var gIceBlockEnvironment;
+var gFire
+
+//visible objects
 var monster;
 var fire;
 
 //animations
 var flame;
+var monsterAnimation;
 
 //controls
 var leftKey;
@@ -29,6 +33,7 @@ function preload(){
 	game.load.image('monster','assets/images/monster_a1.png');
 
 	game.load.spritesheet('fire', 'assets/images/fire_a1.png', 64, 64, 4);
+	game.load.spritesheet('monsterSpriteSheet', 'assets/images/monstersheet_a1.png', 41, 64, 16);
 
 
 	//Defines input keys
@@ -39,38 +44,29 @@ function preload(){
 	dKey = game.input.keyboard.addKey(Phaser.Keyboard.D);
 	wKey = game.input.keyboard.addKey(Phaser.Keyboard.W);
 	spaceBar = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
-
-	//game.camera.follow(ant);
 }
 
 function create(){
 
 	game.add.sprite(0, 0, 'bgd_base');
 
-	monster = game.add.sprite(600, 100, 'monster');
-	
+	//monster = game.add.sprite(600, 100, 'monster');
+	monster = game.add.sprite(832, 560 - ((1 + 1) * 64),'monsterSpriteSheet');
+	monster.animations.add('idle', [0,1,2,3], 10, true);
+	monster.animations.add('rMotion', [4,5,6,7,8,9], 10, true);
+	monster.animations.add('lMotion', [10,11,12,13,14,15], 10, true);	
+	monster.animations.play('idle');
 
 	gIceBlockBorder = new Phaser.Group(game)
 	gIceBlockEnvironment = new Phaser.Group(game);
+	gFire = new Phaser.Group(game);
 
-	fire = game.add.sprite(200,200,'fire');
-
-	fire.animations.add('flame', [0,1,2,3], 10, true);
-	fire.animations.play('flame');
+	
 
 	for(var i = 0; i < 14; i++){
-		//top
-		//gIceBlockBorder.add(game.add.sprite((i * 64), 0, 'wall'));
-		//bottom
 		gIceBlockBorder.add(game.add.sprite((i * 64), 560 - (1 * 64), 'wall'));
 	}
-	for(var i = 0; i < 6; i++){
-		//left
-		//gIceBlockBorder.add(game.add.sprite(0, 64 + (i * 64), 'wall'));
-		//right
-		//gIceBlockBorder.add(game.add.sprite((10 * 64), 64 + (i * 64), 'wall'));
-			
-	}
+
 
 	game.physics.enable([monster, gIceBlockBorder], Phaser.Physics.ARCADE);
 	monster.body.gravity.y = 1400;
@@ -82,6 +78,20 @@ function create(){
 
 
 }
+
+function spawnFlame(){
+	var tempFire = game.add.sprite(832, 560 - ((1 + 1) * 64),'fire');
+	tempFire.animations.add('flame', [0,1,2,3], 10, true);
+	tempFire.animations.play('flame');
+
+	gFire.add(tempFire);
+
+	game.physics.enable([gFire], Phaser.Physics.ARCADE);
+	gFire.forEach(function(ds){
+					ds.body.velocity.x = -100;
+			   		ds.body.immovable = true;
+				}, this);
+			}
 
 function spawnEnvironmentBlock(height){
 	gIceBlockEnvironment.add(game.add.sprite(832,  560 - ((height + 1) * 64), 'wall'));
@@ -104,13 +114,15 @@ function removeElements(arrayOfElementsToRemove){
 
 function update(){
 
+
 	gIceBlockBorder.forEach(function(sp){
 		if(sp.body.x <= -64){
 			sp.body.x = 832;
 			var rnd = Math.random();
 			if(rnd < .6){
-				
 				spawnEnvironmentBlock(1);
+			} else {
+				spawnFlame();				
 			}
 
 		}
@@ -131,13 +143,17 @@ function update(){
 	game.physics.arcade.collide(monster, gIceBlockBorder);
 	game.physics.arcade.collide(monster, gIceBlockEnvironment);
 
+
 	if(leftKey.isDown || aKey.isDown){
 		monster.body.velocity.x = -270;
+		monster.animations.play('lMotion');
 
  	} else if(rightKey.isDown || dKey.isDown){
  		monster.body.velocity.x = 270;
+ 		monster.animations.play('rMotion');
 
  	} else {
+ 		monster.animations.play('idle');
  		if(monster.body.velocity.x > 0){
  			monster.body.acceleration.x = -500;
  		} else {
