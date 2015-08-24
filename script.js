@@ -1,4 +1,4 @@
-var game = new Phaser.Game(820, 560, Phaser.AUTO, '',{preload: preload, create: create, update: update});
+var game = new Phaser.Game(820, 560, Phaser.AUTO, 'phaser-game',{preload: preload, create: create, update: update});
 
 //groups
 var gIceBlockBorder;
@@ -35,12 +35,27 @@ var eTimer;
 var animSeqNF;
 var iTimer;
 
+//arrays
+var harmlessFireGuys = [];
+
+//score
+var score;
+var style;
+var scoreDisplay;
+
+//sounds
+var muted;
+var soua;
+var soub;
+var souc;
+var soud;
+var soue;
+
 this.game.stage.scape.pageAlignHorizontally = true;
 this.game.stage.scale.pageAlighVertically = true;
 this.game.stage.scale.refresh();
 
 function preload(){
-
 	game.load.image('bgd_base','assets/images/bgd_base.png');
 	game.load.image('wall','assets/images/wall_a1.png');
 	game.load.image('monster','assets/images/monster_a1.png');
@@ -60,10 +75,16 @@ function preload(){
 	dKey = game.input.keyboard.addKey(Phaser.Keyboard.D);
 	wKey = game.input.keyboard.addKey(Phaser.Keyboard.W);
 	spaceBar = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+
+	game.load.audio('sa','assets/sounds/sounda.mp3');
+	game.load.audio('sb','assets/sounds/soundb.mp3');
+	game.load.audio('sc','assets/sounds/soundc.mp3');
+	game.load.audio('sd','assets/sounds/soundd.mp3');
+	game.load.audio('sd','assets/sounds/sounde.mp3');
+
 }
 
 function create(){
-
 	game.add.sprite(0, 0, 'bgd_base');
 
 	//monster = game.add.sprite(600, 100, 'monster');
@@ -89,6 +110,11 @@ function create(){
 	temperature = 0;
 	iTime = 0;
 
+	style = { font: "35px Arial", fill: "#ffffff", align: "center" };
+	score = 0;
+	scoreDisplay = game.add.text(600,25, "SCORE: " + score, style);
+	scoreDisplay.setShadow(2,2, 'rgba(0,0,0,1)',0);
+
 	for(var i = 0; i < 14; i++){
 		gIceBlockBorder.add(game.add.sprite((i * 64), 560 - (1 * 64), 'wall'));
 	}
@@ -100,6 +126,13 @@ function create(){
 	    sp.body.immovable = true;
 	}, this);
 
+	muted = false;
+
+	soua = game.add.audio('sa');
+	soub = game.add.audio('sb');
+	souc = game.add.audio('sc');
+	soud = game.add.audio('sd');
+	soue = game.add.audio('se');
 
 	liquid = game.add.sprite(59, 35, 'therm_liquid');
 	game.add.sprite(25, 25, 'therm_base');
@@ -108,6 +141,69 @@ function create(){
 
 	gameEnded = false;
 	eTimer = 0;
+
+	game.input.keyboard.onUpCallback = function( e ){
+            if(e.keyCode == Phaser.Keyboard.M){
+                theMuteFunction();
+            } else if(e.keyCode == Phaser.Keyboard.P){
+            	alert('Game paused, click OK to resume.');
+            }
+    };
+
+}
+
+function theMuteFunction(){
+	console.log('muted:' + muted);
+	if(muted){
+		
+		alert('Sounds are on.');
+		muted = false;
+	} else {
+		
+		alert('Sounds are off.');
+		muted = true;
+	}
+	console.log('muted:' + muted);
+}
+
+function playA(){
+	if(!muted){
+		if(!soua.isPlaying ){
+			soua.play();
+		}
+	}
+}
+
+function playB(){
+	if(!muted){
+		if(!soub.isPlaying){
+			soub.play();
+		}
+	}
+}
+
+function playC(){
+	if(!muted){
+		if(!souc.isPlaying){
+			souc.play();
+		}
+	}
+}
+
+function playD(){
+	if(!muted){
+		if(!soud.isPlaying){
+			soud.play();
+		}
+	}
+}
+
+function playE(){
+	if(!muted){
+		if(!soud.isPlaying){
+			soud.play();
+		}
+	}
 }
 
 function spawnFlame(){
@@ -138,6 +234,7 @@ function spawnEnvironmentBlock(height){
 					var rnd2 = Math.random();
 					if(rnd2 < .35){
 						fireGuy = game.add.sprite(853, 560 - ((height + 1) * 64) - 38, 'fireGuySpriteSheet');
+
 						fireGuy.animations.add('idle', [0,1,2], 10, true);
 						fireGuy.animations.add('frozen', [3], 10, true);
 						fireGuy.animations.play('idle');
@@ -157,6 +254,7 @@ function removeElementsIce(arrayOfElementsToRemove){
 function removeElementsIceBolt(arrayOfElementsToRemove){
 	for(var i = 0; i < arrayOfElementsToRemove.length; i++){
 		gIceBolt.remove(arrayOfElementsToRemove[i]);
+
 	}
 }
 
@@ -171,9 +269,12 @@ function monsterFireCollide(heat){
 	if(temperature<100){
 		if(heat==2){
 			temperature++;
+			playE();
 		} else {
 			temperature += .5;	
+			playE();
 		}
+
 	} else {
 		if(!gameEnded){
 			gameOver();
@@ -182,6 +283,7 @@ function monsterFireCollide(heat){
 }
 
 function update(){
+	console.log('logicTimer: ' + logicTimer);
 	if(gameEnded && animSeqNF){
 		if(eTimer<50){
 			eTimer++;
@@ -190,9 +292,8 @@ function update(){
 			animSeqNF = false;
 			monster.body.immovable = true;
 			monster.body.velocity.y = 100;
-			alert("YOU MELTED\nGAME OVER!!!");
+			alert("YOU MELTED!!!\nGAME OVER!\nSCORE: " + score);
 			location.reload();
-
 		}
 	}
 
@@ -200,7 +301,7 @@ function update(){
 
 	gIceBlockEnvironment.forEach(function(sp){
 		sp.body.velocity.x = -100 * (logicTimer / 250);
-		if(sp.body.x <= -64){
+		if(sp.body.x <= -64){ 
 				sp.body.x = 100;
 				sp.body.y = 100;
 				remEle.push(sp);
@@ -223,10 +324,15 @@ function update(){
 		sp.body.velocity.x = -100 * (logicTimer / 250);
 		if((monster.body.x + 64 > sp.body.x) && (monster.body.x < sp.body.x + 21 )){
 			if((monster.body.y + 64 > sp.body.y) && (monster.body.y < sp.body.y)){
-				if(sp.){
-
+				var harmless = false;				
+				for(var i = 0; i < harmlessFireGuys.length; i++){
+					if(sp == harmlessFireGuys[i]){
+						harmless = true;
+					}
 				}
-			monsterFireCollide(2);
+				if(!harmless){
+					monsterFireCollide(2);
+				}
 			}
 		}
 	}, this);
@@ -279,6 +385,7 @@ function update(){
 	 	}
 	 	if((upKey.isDown || wKey.isDown) && monster.body.velocity.y ==0){
 	 		monster.body.velocity.y = -500;
+	 		playA();
 	 	}
  	}
 
@@ -294,16 +401,31 @@ function update(){
 	gIceBolt.forEach(function(sp){
 		if((sp.body.x < -100) || (sp.body.x > 920) || (sp.body.y < -100) || (sp.body.y > 660)){
 			remEleIceBolt.push(sp);
-		} 
+		}
 		gFireGuys.forEach(function(ds){
+		var proceed = false;
+
 			if((sp.body.x > ds.body.x) && (sp.body.x < ds.body.x + 21)){
 				if((sp.body.y > ds.body.y - 20) && (sp.body.y < ds.body.y + 38)){
-					sp.body.x = 1000;
-					ds.animations.play('frozen');
+					
+					for(var i = 0; i < harmlessFireGuys.length; i++){
+						if(harmlessFireGuys[i]==ds){
+							proceed = true;
+						}
+					}
+					if(proceed){
+
+					} else {
+						sp.body.x = 1000;
+						ds.animations.play('frozen');
+						score++;
+						scoreDisplay.setText('SCORE: ' + score);
+						harmlessFireGuys.push(ds);
+						playC();
+					}
 				}
 			}
 		}, this);
-
 
 	}, this);
 	removeElementsIceBolt(remEleIceBolt);
@@ -316,8 +438,11 @@ function update(){
 			var tempIce3 = game.add.sprite(monster.body.x + 10, monster.body.y, 'iceBolt');
 			var tempIce4 = game.add.sprite(monster.body.x + 20, monster.body.y + 20, 'iceBolt');
 			var tempIce5 = game.add.sprite(monster.body.x + 20, monster.body.y + 20, 'iceBolt');
+			var tempIce6 = game.add.sprite(monster.body.x + 10, monster.body.y, 'iceBolt');
+			var tempIce7 = game.add.sprite(monster.body.x + 20, monster.body.y + 20, 'iceBolt');
+			var tempIce8 = game.add.sprite(monster.body.x - 20, monster.body.y + 20, 'iceBolt');
 
-			game.physics.enable([tempIce1, tempIce2, tempIce3, tempIce4, tempIce5], Phaser.Physics.ARCADE);
+			game.physics.enable([tempIce1, tempIce2, tempIce3, tempIce4, tempIce5, tempIce6, tempIce7, tempIce8], Phaser.Physics.ARCADE);
 
 			tempIce1.body.velocity.x = -300;
 
@@ -332,15 +457,30 @@ function update(){
 			tempIce4.body.velocity.y = -200;
 			tempIce4.angle = -45;
 
-
 			tempIce5.body.velocity.x = 300;
+
+			tempIce6.body.velocity.x = 200;
+			tempIce6.body.velocity.y = 200;
+
+			tempIce7.body.velocity.y = 300;
+			tempIce7.angle = 90; 
+
+			tempIce8.body.velocity.x = -200;
+			tempIce8.body.velocity.y = 200;
+			tempIce8.angle = -45;
 
 			gIceBolt.add(tempIce1);
 			gIceBolt.add(tempIce2);
 			gIceBolt.add(tempIce3);
 			gIceBolt.add(tempIce4);
 			gIceBolt.add(tempIce5);
+			gIceBolt.add(tempIce6);
+			gIceBolt.add(tempIce7);
+			gIceBolt.add(tempIce8);
+
 			iTimer++;
+
+			playB();
 		}
  	}
 
